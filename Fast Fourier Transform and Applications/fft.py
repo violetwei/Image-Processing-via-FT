@@ -111,7 +111,26 @@ def twoD_FFT_inverse(img):
         ans[:, c] = oneD_FFT_inverse(ans[:, c])
     return ans
 
+def denoise(fft_img, low_freq = 0, high_freq = 0.15):
+    #fft_img = img.copy()
+    fft_img = np.asarray(fft_img, dtype=complex)
+    n, m = fft_img.shape
+
+    fft_img[int(n * low_freq):-int(n * high_freq), :] = 0
+    fft_img[:, int(m * low_freq):-int(m * high_freq)] = 0
+
+    # count the number of non-zeros
+    nonzero_count = np.count_nonzero(fft_img)
+    print("The number of non-zeros using: ", nonzero_count)
+    print("The fraction they represent of the original Fourier coefficients: ", nonzero_count / fft_img.size)
+
+    # Denoising the image using 2d fft inverse
+    denoised_img = twoD_FFT_inverse(fft_img).real
+    return denoised_img
+
 def mode1(input_image):
+    # fast mode
+    print("Mode [1] Selected")
     # read input image
     raw_image = cv.imread(input_image, cv.IMREAD_GRAYSCALE).astype(float)
 
@@ -121,7 +140,7 @@ def mode1(input_image):
     # two-dimensional Fourier transform using a fast Fourier transform algorithm
     img_2dfft = twoD_FFT(pad_img)
 
-    # plot img
+    # plot image
     fig, (ax1, ax2) = plt.subplots(1, 2)
     fig.suptitle('Mode [1]: Fast Mode')
     ax1.set_title('Original Input Image')
@@ -129,6 +148,35 @@ def mode1(input_image):
     ax2.set_title('2D FFT Logarithmic Colormap')
     ax2.imshow(np.abs(img_2dfft), norm=colors.LogNorm())
     plt.show()
+
+def mode2(input_image):
+    # denoise
+    print("Mode [2] Selected")
+
+    # read input image
+    raw_image = cv.imread(input_image, cv.IMREAD_GRAYSCALE).astype(float)
+
+    # pad image
+    pad_img = pad_image(raw_image)
+
+    # two-dimensional Fourier transform using a fast Fourier transform algorithm
+    img_2dfft = twoD_FFT(pad_img)
+
+    # denoising
+    denoised_img = denoise(img_2dfft)
+
+    # plot image
+    fig, (ax1, ax2) = plt.subplots(1, 2)
+    fig.suptitle('Mode [2]: Denoising Mode')
+    ax1.set_title('Original Image')
+    ax1.imshow(pad_img[:raw_image.shape[0], :raw_image.shape[1]], plt.cm.gray)
+    ax2.set_title('Denoised Image')
+    ax2.imshow(denoised_img[:raw_image.shape[0], :raw_image.shape[1]], plt.cm.gray)
+    plt.show()
+
+
+def mode3(input_image):
+    print("Mode [3] Selected")
 
 def __main__():
     # parse arguments from inputs
@@ -151,8 +199,13 @@ def __main__():
     input_image = input_args.image
 
     if input_mode == 1:
+        # Fast Mode
         mode1(input_image)
-
+    elif input_mode == 2:
+        # Denoising
+        mode2(input_image)
+    elif input_mode == 3:
+        mode3(input_image)
 
 
 if __name__ == '__main__':
