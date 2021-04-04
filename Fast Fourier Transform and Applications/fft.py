@@ -128,6 +128,27 @@ def denoise(fft_img, low_freq = 0, high_freq = 0.15):
     denoised_img = twoD_FFT_inverse(fft_img).real
     return denoised_img
 
+def compress(fft_img, compression_level):
+    compress_img = np.asarray(fft_img, dtype=complex)
+
+    m = int((compress_img.shape[0] / 2) * math.sqrt(1 - (compression_level / 100)))
+    n = int((compress_img.shape[1] / 2) * math.sqrt(1 - (compression_level / 100)))
+
+    compress_img[m:-n, :] = 0+0.j
+    compress_img[:, n:-m] = 0+0.j
+
+    precompress_nonzeros_count = np.count_nonzero(fft_img)
+    postcompress_nonzeros_count = np.count_nonzero(compress_img)
+
+    print("The non-zero values for compression level {}% are {}".format(compression_level, postcompress_nonzeros_count))
+
+    save_npz('moonlanding-{}-compression.csr'.format(compression_level),
+             csr_matrix(compress_img))
+
+    # inverse transform the modified Fourier coefficients to obtain the image
+    compressed = twoD_FFT_inverse(csr_matrix(compress_img).toarray())
+    return compressed
+
 def mode1(input_image):
     # fast mode
     print("Mode [1] Selected")
@@ -177,6 +198,57 @@ def mode2(input_image):
 
 def mode3(input_image):
     print("Mode [3] Selected")
+
+    # read input image
+    raw_image = cv.imread(input_image, cv.IMREAD_GRAYSCALE).astype(float)
+
+    # pad image
+    pad_img = pad_image(raw_image)
+
+    # two-dimensional Fourier transform using a fast Fourier transform algorithm
+    img_2dfft = twoD_FFT(pad_img)
+
+    # plot images
+    fig, ax = plt.subplots(2, 3) # 2 by 3
+    fig.suptitle('Mode [3]: Compressing Mode')
+
+    # compression level: 0%
+    compressed_img1 = compress(img_2dfft, 0)
+    ax[0, 0].set_title('0% Compression')
+    #ax[0, 0].imshow(compressed_img1, plt.cm.gray)
+    ax[0, 0].imshow(np.real(compressed_img1)[:raw_image.shape[0], :raw_image.shape[1]], plt.cm.gray)
+
+    # compression level: 20%
+    compressed_img2 = compress(img_2dfft, 20)
+    ax[0, 1].set_title('20% Compression')
+    #ax[0, 1].imshow(compressed_img2, plt.cm.gray)
+    ax[0, 1].imshow(np.real(compressed_img2)[:raw_image.shape[0], :raw_image.shape[1]], plt.cm.gray)
+
+    # compression level: 35%
+    compressed_img3 = compress(img_2dfft, 35)
+    ax[0, 2].set_title('35% Compression')
+    #ax[0, 2].imshow(compressed_img3, plt.cm.gray)
+    ax[0, 2].imshow(np.real(compressed_img3)[:raw_image.shape[0], :raw_image.shape[1]], plt.cm.gray)
+
+    # compression level: 55%
+    compressed_img4 = compress(img_2dfft, 55)
+    ax[1, 0].set_title('55% Compression')
+    #ax[1, 0].imshow(compressed_img4, plt.cm.gray)
+    ax[1, 0].imshow(np.real(compressed_img4)[:raw_image.shape[0], :raw_image.shape[1]], plt.cm.gray)
+
+    # compression level: 75%
+    compressed_img5 = compress(img_2dfft, 75)
+    ax[1, 1].set_title('75% Compression')
+    #ax[1, 1].imshow(compressed_img5, plt.cm.gray)
+    ax[1, 1].imshow(np.real(compressed_img5)[:raw_image.shape[0], :raw_image.shape[1]], plt.cm.gray)
+
+    # compression level: 95%
+    compressed_img6 = compress(img_2dfft, 95)
+    ax[1, 2].set_title('95% Compression')
+    #ax[1, 2].imshow(compressed_img6, plt.cm.gray)
+    ax[1, 2].imshow(np.real(compressed_img6)[:raw_image.shape[0], :raw_image.shape[1]], plt.cm.gray)
+
+    plt.show()
 
 def __main__():
     # parse arguments from inputs
