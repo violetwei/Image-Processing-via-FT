@@ -2,7 +2,6 @@ import numpy as np
 import cv2 as cv
 import matplotlib.colors as colors
 import matplotlib.pyplot as plt
-import matplotlib.image as mpimg
 
 from scipy.sparse import csr_matrix
 from scipy.sparse import save_npz
@@ -50,7 +49,7 @@ def oneD_FFT(img):
     N = img.shape[0] #size
     if N % 2 != 0:
         raise AssertionError("ERROR! The size of img is supposed to be power of 2.")
-    elif N > 16:
+    if N > 16:
         # call function recursively
         odd = oneD_FFT(img[1::2])
         even = oneD_FFT(img[::2])
@@ -81,7 +80,7 @@ def oneD_FFT_inverse(img):
                        half_N * np.exp(2j * np.pi * n / N) * odd[n % half_N]
             ans[n] /= N
         return ans
-    else: #N <= 16
+    else: # N <= 16
         return oneD_slowFT_inverse(img)
 
 
@@ -111,7 +110,31 @@ def twoD_FFT_inverse(img):
         ans[:, c] = oneD_FFT_inverse(ans[:, c])
     return ans
 
-def denoise(fft_img, low_freq = 0, high_freq = 0.15):
+def twoD_DFT(img):
+    img = np.asarray(img, dtype=complex)
+    n, m = img.shape
+    ans = np.zeros((n, m), dtype=complex)
+    for k in range(n):
+        for l in range(m):
+            for mi in range(m):
+                for ni in range(n):
+                    ans[k, l] += img[ni, mi] * np.exp(-2j * np.pi * ((l * mi / m) + (k * ni / n)))
+    return ans
+
+def twoD_DFT_inverse(img):
+    img = np.asarray(img, dtype=complex)
+    n, m = img.shape
+    ans = np.zeros((n, m), dtype=complex)
+    for k in range(n):
+        for l in range(m):
+            for mi in range(m):
+                for ni in range(n):
+                    ans[k, l] += img[ni, mi] * np.exp(2j * np.pi * ((l * mi / m) + (k * ni / n)))
+            ans[k, l] /= n * m
+    return ans
+
+
+def denoise(fft_img, low_freq = 0.15, high_freq = 0):
     #fft_img = img.copy()
     fft_img = np.asarray(fft_img, dtype=complex)
     n, m = fft_img.shape
@@ -183,15 +206,17 @@ def mode2(input_image):
     # two-dimensional Fourier transform using a fast Fourier transform algorithm
     img_2dfft = twoD_FFT(pad_img)
 
+    low = 0.15
+    high = 0.15
     # denoising
-    denoised_img = denoise(img_2dfft)
+    denoised_img = denoise(img_2dfft, low, high)
 
     # plot image
     fig, (ax1, ax2) = plt.subplots(1, 2)
     fig.suptitle('Mode [2]: Denoising Mode')
     ax1.set_title('Original Image')
     ax1.imshow(pad_img[:raw_image.shape[0], :raw_image.shape[1]], plt.cm.gray)
-    ax2.set_title('Denoised Image')
+    ax2.set_title('Denoised Image - Low: {} High: {}'.format(low,high))
     ax2.imshow(denoised_img[:raw_image.shape[0], :raw_image.shape[1]], plt.cm.gray)
     plt.show()
 
@@ -250,6 +275,92 @@ def mode3(input_image):
 
     plt.show()
 
+def mode4(input_image):
+    print("Mode [4] Selected")
+
+    # re-running the experiment at least 10 times
+    number_of_run = 10
+
+    # 2D arrays of random elements of various sizes start from 2^5 and move up to 2^10
+    problem_size = 2**4
+
+    # problem size: 2^5=32, 2^6=64, 2^7=128, 2^8=256, 2^9=512
+    size_list = [32, 64, 128, 256]
+
+    dft_std = [] # naive method
+    dft_mean = [] # naive method
+    fft_std = []
+    fft_mean = []
+
+    for i in range(len(size_list)):
+        fft_runtime = []
+
+        for j in range(number_of_run):
+            #dim = np.random.rand(int(math.sqrt(problem_size)), int(math.sqrt(problem_size)))
+            dim = np.random.rand(problem_size, problem_size)
+            img = pad_image(dim)
+            #print('array size: ', len(img))
+            start_time = time.perf_counter()
+            twoD_FFT(img)
+            end_time = time.perf_counter()
+            runtime = end_time - start_time
+            fft_runtime.append(runtime)
+            print('Problem size of {} - FFT Run: {}'.format(len(img), j))
+
+        fft_mean.append(statistics.mean(fft_runtime))
+        fft_std.append(statistics.stdev(fft_runtime))
+        print('FFT Stats for problem size of {} with {} running times: Mean={}, StdDev={}'.format(
+            len(img), number_of_run, statistics.mean(fft_runtime), statistics.stdev(fft_runtime)))
+
+        problem_size *= 2
+
+    print('DFT start')
+
+    # reinitialize size to 32
+    problem_size = 2 ** 3
+
+    for i in range(len(size_list)):
+        dft_runtime = []
+
+        for j in range(number_of_run):
+            #dim = np.random.rand(int(math.sqrt(problem_size)), int(math.sqrt(problem_size)))
+            dim = np.random.rand(problem_size, problem_size)
+            img = pad_image(dim)
+            start_time = time.perf_counter()
+            twoD_DFT(img)
+            end_time = time.perf_counter()
+            runtime = end_time - start_time
+            dft_runtime.append(runtime)
+            print('Problem size of {} - DFT Run: {}'.format(size_list[i], j))
+
+        dft_mean.append(statistics.mean(dft_runtime))
+        dft_std.append(statistics.stdev(dft_runtime))
+        print('DFT Stats for problem size of {} with {} running times: Mean={}, StdDev={}'.format(
+            size_list[i], number_of_run, statistics.mean(dft_runtime), statistics.stdev(dft_runtime)))
+
+        problem_size *= 2
+
+
+    # plotting
+    fig, (ax1, ax2) = plt.subplots(1, 2)
+    fig.suptitle('Mode [4]: Plotting Mode')
+
+    ax1.set_title('Mean Runtime')
+    ax1.set_xlabel('Problem Size')
+    ax1.set_ylabel('Runtime Mean(secs)')
+    ax1.plot(size_list, dft_mean, label='DFT(naive)')
+    ax1.plot(size_list, fft_mean, label='FFT')
+    ax1.legend()
+
+    ax2.set_title('StdDev Runtime')
+    ax2.set_xlabel('Problem Size')
+    ax2.set_ylabel('Runtime StdDev(secs)')
+    ax2.plot(size_list, dft_std, label='DFT(naive)')
+    ax2.plot(size_list, fft_std, label='FFT')
+    ax2.legend()
+
+    plt.show()
+
 def __main__():
     # parse arguments from inputs
     parser = argparse.ArgumentParser(description='fft parser')
@@ -274,11 +385,13 @@ def __main__():
         # Fast Mode
         mode1(input_image)
     elif input_mode == 2:
-        # Denoising
+        # Denoising Mode
         mode2(input_image)
     elif input_mode == 3:
+        # Compressing Mode
         mode3(input_image)
-
+    elif input_mode == 4:
+        mode4(input_image)
 
 if __name__ == '__main__':
     __main__()
