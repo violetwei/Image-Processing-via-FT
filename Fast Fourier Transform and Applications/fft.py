@@ -151,7 +151,7 @@ def twoD_DFT_inverse(img):
 
 
 # Denoising Function
-def denoise(fft_img, low_freq = 0.15, high_freq = 0):
+def denoise(fft_img, low_freq, high_freq):
     #fft_img = img.copy()
     fft_img = np.asarray(fft_img, dtype=complex)
     n, m = fft_img.shape
@@ -205,7 +205,7 @@ def mode1(input_image):
     # two-dimensional Fourier transform using a fast Fourier transform algorithm
     img_2dfft = twoD_FFT(pad_img)
 
-    # plot image
+    # plot image - generated using the self-implemented algorithms
     fig, (ax1, ax2) = plt.subplots(1, 2)
     fig.suptitle('Mode [1]: Fast Mode')
     ax1.set_title('Original Input Image')
@@ -214,8 +214,17 @@ def mode1(input_image):
     ax2.imshow(np.abs(img_2dfft), norm=colors.LogNorm())
     plt.show()
 
+    # plot image - generated using the built-in np.fft.fft2 function
+    fig, (ax1, ax2) = plt.subplots(1, 2)
+    fig.suptitle('Mode [1]: Fast Mode')
+    ax1.set_title('Original Input Image')
+    ax1.imshow(pad_img[:raw_image.shape[0], :raw_image.shape[1]], plt.cm.gray)
+    ax2.set_title('2D FFT Logarithmic Colormap Using np.fft')
+    ax2.imshow(np.abs(np.fft.fft2(pad_img)), norm=colors.LogNorm())
+    plt.show()
 
-# Mode[2[ - Denoising Mode
+
+# Mode[2] - Denoising Mode
 def mode2(input_image):
     # denoise
     print("Mode [2] Selected")
@@ -229,17 +238,20 @@ def mode2(input_image):
     # two-dimensional Fourier transform using a fast Fourier transform algorithm
     img_2dfft = twoD_FFT(pad_img)
 
-    low = 0.15
-    high = 0.15
+    # low & high freq threshold parameters
+    low = 2.2
+    high = 2.8
+
     # denoising
     denoised_img = denoise(img_2dfft, low, high)
+    print('Mode [2] is denoising image with low freq threshold of {} and high freq threshold of {}'.format(low, high))
 
     # plot image
     fig, (ax1, ax2) = plt.subplots(1, 2)
     fig.suptitle('Mode [2]: Denoising Mode')
     ax1.set_title('Original Image')
     ax1.imshow(pad_img[:raw_image.shape[0], :raw_image.shape[1]], plt.cm.gray)
-    ax2.set_title('Denoised Image - Low: {} High: {}'.format(low,high))
+    ax2.set_title('Denoised Image - Low: {} High: {}'.format(low, high))
     ax2.imshow(denoised_img[:raw_image.shape[0], :raw_image.shape[1]], plt.cm.gray)
     plt.show()
 
