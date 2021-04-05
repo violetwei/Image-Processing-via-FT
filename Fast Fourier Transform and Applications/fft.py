@@ -11,6 +11,7 @@ import argparse
 import time
 import statistics
 
+# Helper function - Resizing
 def resize(n):
     power = int(math.log(n, 2))
     new_size = int(pow(2, power+1))
@@ -25,6 +26,8 @@ def pad_image(raw_image):
     img[:original_shape[0], :original_shape[1]] = raw_image
     return img
 
+
+# 1D DFT
 def oneD_slowFT(img):
     img = np.asarray(img, dtype=complex)
     N = img.shape[0] #size
@@ -34,6 +37,8 @@ def oneD_slowFT(img):
             ans[k] += np.exp(-2j * np.pi * k * n / N) * img[n]
     return ans
 
+
+# Inverse of 1D DFT
 def oneD_slowFT_inverse(img):
     img = np.asarray(img, dtype=complex)
     N = img.shape[0] #size
@@ -44,6 +49,8 @@ def oneD_slowFT_inverse(img):
         ans[n] /= N
     return ans
 
+
+# 1D FFT
 def oneD_FFT(img):
     img = np.asarray(img, dtype=complex)
     N = img.shape[0] #size
@@ -63,6 +70,8 @@ def oneD_FFT(img):
     else: #N <= 16
         return oneD_slowFT(img)
 
+
+# Inverse of 1D FFT
 def oneD_FFT_inverse(img):
     img = np.asarray(img, dtype=complex)
     N = img.shape[0] #size
@@ -84,6 +93,7 @@ def oneD_FFT_inverse(img):
         return oneD_slowFT_inverse(img)
 
 
+# 2D FFT
 def twoD_FFT(img):
     img = np.asarray(img, dtype=complex)
     n, m = img.shape
@@ -97,6 +107,8 @@ def twoD_FFT(img):
         ans[r, :] = oneD_FFT(ans[r, :])
     return ans
 
+
+# Inverse of 2D FFT
 def twoD_FFT_inverse(img):
     img = np.asarray(img, dtype=complex)
     n, m = img.shape
@@ -110,6 +122,8 @@ def twoD_FFT_inverse(img):
         ans[:, c] = oneD_FFT_inverse(ans[:, c])
     return ans
 
+
+# 2D DFT
 def twoD_DFT(img):
     img = np.asarray(img, dtype=complex)
     n, m = img.shape
@@ -121,6 +135,8 @@ def twoD_DFT(img):
                     ans[k, l] += img[ni, mi] * np.exp(-2j * np.pi * ((l * mi / m) + (k * ni / n)))
     return ans
 
+
+# Inverse of 2D DFT
 def twoD_DFT_inverse(img):
     img = np.asarray(img, dtype=complex)
     n, m = img.shape
@@ -134,6 +150,7 @@ def twoD_DFT_inverse(img):
     return ans
 
 
+# Denoising Function
 def denoise(fft_img, low_freq = 0.15, high_freq = 0):
     #fft_img = img.copy()
     fft_img = np.asarray(fft_img, dtype=complex)
@@ -151,6 +168,8 @@ def denoise(fft_img, low_freq = 0.15, high_freq = 0):
     denoised_img = twoD_FFT_inverse(fft_img).real
     return denoised_img
 
+
+# Compressing Function
 def compress(fft_img, compression_level):
     compress_img = np.asarray(fft_img, dtype=complex)
 
@@ -172,6 +191,8 @@ def compress(fft_img, compression_level):
     compressed = twoD_FFT_inverse(csr_matrix(compress_img).toarray())
     return compressed
 
+
+# Mode[1] - Fast Mode
 def mode1(input_image):
     # fast mode
     print("Mode [1] Selected")
@@ -193,6 +214,8 @@ def mode1(input_image):
     ax2.imshow(np.abs(img_2dfft), norm=colors.LogNorm())
     plt.show()
 
+
+# Mode[2[ - Denoising Mode
 def mode2(input_image):
     # denoise
     print("Mode [2] Selected")
@@ -221,6 +244,7 @@ def mode2(input_image):
     plt.show()
 
 
+# Mode[3] - Compressing Mode
 def mode3(input_image):
     print("Mode [3] Selected")
 
@@ -275,6 +299,8 @@ def mode3(input_image):
 
     plt.show()
 
+
+# Mode[4] - Plotting Mode
 def mode4(input_image):
     print("Mode [4] Selected")
 
@@ -340,8 +366,8 @@ def mode4(input_image):
 
         problem_size *= 2
 
-
     # plotting
+    # First Plot Graph
     fig, (ax1, ax2) = plt.subplots(1, 2)
     fig.suptitle('Mode [4]: Plotting Mode')
 
@@ -358,8 +384,17 @@ def mode4(input_image):
     ax2.plot(size_list, dft_std, label='DFT(naive)')
     ax2.plot(size_list, fft_std, label='FFT')
     ax2.legend()
-
     plt.show()
+
+    # Second Plot Graph
+    plt.errorbar(size_list, dft_mean, yerr=dft_std, fmt='-o', label='DFT')
+    plt.errorbar(size_list, fft_mean, yerr=fft_std, fmt='-o', label='FFT')
+    plt.title('Runtime Graph of Fourrier Transforms')
+    plt.xlabel('Problem Size')
+    plt.ylabel('Runtime (seconds)')
+    plt.legend()
+    plt.show()
+
 
 def __main__():
     # parse arguments from inputs
@@ -391,6 +426,7 @@ def __main__():
         # Compressing Mode
         mode3(input_image)
     elif input_mode == 4:
+        # Plotting Mode
         mode4(input_image)
 
 if __name__ == '__main__':
